@@ -9,6 +9,11 @@ from pytz import timezone, utc, all_timezones
 from tzlocal import get_localzone
 import click
 import itertools
+import requests
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 def org_datetime(dt, tz):
     '''Timezone aware datetime to YYYY-MM-DD DayofWeek HH:MM str in localtime.
@@ -324,6 +329,14 @@ def print_timezones(ctx, param, value):
         click.echo(tz)
     ctx.exit()
 
+def get_input_fp(ctx, param, value):
+    if value.startswith("http"):
+        req = requests.get(value)
+        f = StringIO(req.text)
+    else:
+        f = open(value, "r")
+
+    return f
 
 @click.command(context_settings={"help_option_names": ['-h', '--help']})
 @click.option(
@@ -353,7 +366,7 @@ def print_timezones(ctx, param, value):
     default=None,
     callback=check_timezone,
     help="Timezone to use. (local timezone by default)")
-@click.argument("ics_file", type=click.File("r", encoding="utf-8"))
+@click.argument("ics_file", callback=get_input_fp)
 @click.argument("org_file", type=click.File("w", encoding="utf-8"))
 def main(ics_file, org_file, email, days, timezone):
     """Convert ICAL format into org-mode.
